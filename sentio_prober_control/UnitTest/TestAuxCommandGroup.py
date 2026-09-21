@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 from sentio_prober_control.Sentio.Response import Response
 from sentio_prober_control.Sentio.Enumerations import ChuckSite
 from sentio_prober_control.Sentio.ProberBase import ProberException
@@ -34,7 +35,7 @@ class TestAuxCommandGroup(unittest.TestCase):
         # Create a mock communicator based on CommunicatorTcpIp.
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
         # Create a SentioProber instance (which instantiates the aux command group).
-        self.prober = SentioProber(self.mock_comm)
+        self.prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
         self.aux: AuxCommandGroup = self.prober.aux
 
     def tearDown(self):

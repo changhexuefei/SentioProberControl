@@ -98,7 +98,6 @@ class SentioProber(ProberBase):
         self.map: WafermapCommandGroup = WafermapCommandGroup(self)
         self.qalibria: QAlibriaCommandGroup = QAlibriaCommandGroup(self)
         self.service: ServiceCommandGroup = ServiceCommandGroup(self)
-        self.siph: SiPHCommandGroup = SiPHCommandGroup(self)
         self.status: StatusCommandGroup = StatusCommandGroup(self)
         self.vision: VisionCommandGroup = VisionCommandGroup(self)
         self.setup: SetupCommandGroup = SetupCommandGroup(self)
@@ -106,7 +105,9 @@ class SentioProber(ProberBase):
         self.__name = "SentioProber"
         self.comm.send("*RCS 1")  # switch to the native SENTIO remote command set
 
-        # If the compatibility Level is set to Auto, we will try to determine the compatibility level
+        # Use the explicitly requested compatibility level. If it is set to Auto, query
+        # SENTIO for its version and derive the compatibility level from it.
+        Compatibility.level = compat_level
         if compat_level == CompatibilityLevel.Auto:
             version : str = self.status.get_version()
 
@@ -144,6 +145,11 @@ class SentioProber(ProberBase):
         # this command group must be initialized after determining the 
         # compatibility level.
         self.probe: ProbeCommandGroup = ProbeCommandGroup(self)
+
+        # The SiPH command group has sub groups for the top and bottom positioners which
+        # are only available for SENTIO >= 25.2. It must be initialized after determining
+        # the compatibility level as well.
+        self.siph: SiPHCommandGroup = SiPHCommandGroup(self)
 
         # Command groups for stages; Only available for Sentio > 25.2
         if Compatibility.level >= CompatibilityLevel.Sentio_25_2:

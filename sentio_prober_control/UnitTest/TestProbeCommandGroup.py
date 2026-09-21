@@ -1,8 +1,9 @@
 import unittest
 from unittest.mock import MagicMock
-from sentio_prober_control.Sentio.Enumerations import ProbePosition, XyReference, ZReference
+from sentio_prober_control.Sentio.Enumerations import ProbePosition, XyReference, ZReference, Stage
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 
 
 class TestProbeCommandGroup(unittest.TestCase):
@@ -11,8 +12,14 @@ class TestProbeCommandGroup(unittest.TestCase):
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
 
         # Ensure the mock provides `send` and `read_line` methods
-        self.test_prober = SentioProber(self.mock_comm)
+        self.test_prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
+
+    def test_move_probe_lift(self):
+        self.mock_comm.read_line.return_value = "0,0,12000.0"
+        z = self.test_prober.probe.move_probe_lift(Stage.BottomProbe, ProbePosition.East)
+        self.mock_comm.send.assert_called_with("probe:bottom:east:move_lift")
+        self.assertEqual(z, 12000.0)
 
     def test_async_step_probe_site(self):
         self.mock_comm.read_line.return_value = "0,123,OK"

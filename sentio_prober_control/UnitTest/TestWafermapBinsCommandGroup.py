@@ -5,13 +5,14 @@ from sentio_prober_control.Sentio.Enumerations import BinQuality, BinSelection
 
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 
 
 class TestWafermapBinsCommandGroup(unittest.TestCase):
     def setUp(self):
         """Mock the communicator and initialize the test prober."""
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
-        self.test_prober = SentioProber(self.mock_comm)
+        self.test_prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_clear_all(self):
         """Test clearing all bins"""

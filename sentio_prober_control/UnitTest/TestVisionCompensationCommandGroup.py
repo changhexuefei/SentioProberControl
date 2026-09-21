@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 from sentio_prober_control.Sentio.Enumerations import CompensationMode, CompensationType
 
 
@@ -8,7 +9,7 @@ class TestVisionCompensationGroup(unittest.TestCase):
 
     def setUp(self):
         self.mock_comm = MagicMock()
-        self.prober = SentioProber(self.mock_comm)
+        self.prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_enable_compensation(self):
         self.mock_comm.read_line.return_value = "0,0,Lateral,Vertical"

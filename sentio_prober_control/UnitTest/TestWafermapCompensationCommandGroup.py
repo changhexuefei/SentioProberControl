@@ -6,6 +6,7 @@ from sentio_prober_control.Sentio.Response import Response
 from sentio_prober_control.Sentio.CommandGroups.WafermapCompensationCommandGroup import WafermapCompensationCommandGroup
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 
 
 class TestWafermapCompensationCommandGroup(unittest.TestCase):
@@ -14,7 +15,7 @@ class TestWafermapCompensationCommandGroup(unittest.TestCase):
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
 
         # Create a test prober instance with the mocked communicator
-        self.test_prober = SentioProber(self.mock_comm)
+        self.test_prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_topography(self):
         """Test executing topography compensation"""
