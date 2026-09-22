@@ -1,58 +1,93 @@
-from typing import Tuple
-
 from sentio_prober_control.Sentio.Compatibility import Compatibility, CompatibilityLevel
-from sentio_prober_control.Sentio.Enumerations import ProbePosition, UvwAxis, FiberType, CompatibilityLevel, Stage
+from sentio_prober_control.Sentio.Enumerations import ProbePosition, UvwAxis, Stage
+from sentio_prober_control.Sentio.CommandGroups.SiPHPositionerCommandGroup import SiPHPositionerCommandGroup
 from sentio_prober_control.Sentio.Response import Response
-from sentio_prober_control.Sentio.CommandGroups.CommandGroupBase import CommandGroupBase
+from sentio_prober_control.Sentio.CommandGroups.ModuleCommandGroupBase import ModuleCommandGroupBase
 
 
-class SiPHCommandGroup(CommandGroupBase):
+class SiPHCommandGroup(ModuleCommandGroupBase):
     """This command group contains functions for working with SiPH applications.
     You are not meant to instantiate this class directly. Access it via the siph attribute
     of the [SentioProber](SentioProber.md) class.
+
+    Commands that address a single SiPH positioner mirror the remote command structure
+    `siph:{top|bottom}:{position}:...` and are available through the
+    [SiPHPositionerCommandGroup](SiPHPositionerCommandGroup.md) sub groups listed below
+    (SENTIO 25.2 and newer). The `top` part is optional as in the remote command.
+
+    Attributes:
+        top.east (SiPHPositionerCommandGroup): Top east positioner. Also available as siph.east.
+        top.west (SiPHPositionerCommandGroup): Top west positioner. Also available as siph.west.
+        top.north (SiPHPositionerCommandGroup): Top north positioner. Also available as siph.north.
+        top.south (SiPHPositionerCommandGroup): Top south positioner. Also available as siph.south.
+        top.northeast (SiPHPositionerCommandGroup): Top northeast positioner. Also available as siph.northeast.
+        top.northwest (SiPHPositionerCommandGroup): Top northwest positioner. Also available as siph.northwest.
+        top.southeast (SiPHPositionerCommandGroup): Top southeast positioner. Also available as siph.southeast.
+        top.southwest (SiPHPositionerCommandGroup): Top southwest positioner. Also available as siph.southwest.
+        bottom.east (SiPHPositionerCommandGroup): Bottom east positioner.
+        bottom.west (SiPHPositionerCommandGroup): Bottom west positioner.
+
+    Example:
+
+    ```py
+    from sentio_prober_control.Sentio.ProberSentio import SentioProber
+
+    prober = SentioProber.create_prober("tcpip", "127.0.0.1:35555")
+    cap_east = prober.siph.east.get_cap_sensor()            # same as prober.siph.top.east
+    cap_west = prober.siph.bottom.west.get_cap_sensor()
+    prober.siph.fast_alignment()
+    ```
     """
 
-    def __init__(self, prober : 'SentioProber') -> None:
-        super().__init__(prober)
+    class _TopPositioners:
+        """Access to the top SiPH positioners (siph:top:{position}:...)."""
+        def __init__(self, prober: 'SentioProber') -> None: # type: ignore
+            def make(position: ProbePosition) -> SiPHPositionerCommandGroup:
+                return SiPHPositionerCommandGroup(prober, Stage.TopProbe, position, f"siph:top:{position.to_string().lower()}")
+
+            self.east: SiPHPositionerCommandGroup = make(ProbePosition.East)
+            self.west: SiPHPositionerCommandGroup = make(ProbePosition.West)
+            self.north: SiPHPositionerCommandGroup = make(ProbePosition.North)
+            self.south: SiPHPositionerCommandGroup = make(ProbePosition.South)
+            self.northeast: SiPHPositionerCommandGroup = make(ProbePosition.NorthEast)
+            self.northwest: SiPHPositionerCommandGroup = make(ProbePosition.NorthWest)
+            self.southeast: SiPHPositionerCommandGroup = make(ProbePosition.SouthEast)
+            self.southwest: SiPHPositionerCommandGroup = make(ProbePosition.SouthWest)
+
+    class _BottomPositioners:
+        """Access to the bottom SiPH positioners (siph:bottom:{position}:...). SENTIO
+        provides bottom SiPH positioners for the east and west position only."""
+        def __init__(self, prober: 'SentioProber') -> None: # type: ignore
+            def make(position: ProbePosition) -> SiPHPositionerCommandGroup:
+                return SiPHPositionerCommandGroup(prober, Stage.BottomProbe, position, f"siph:bottom:{position.to_string().lower()}")
+
+            self.east: SiPHPositionerCommandGroup = make(ProbePosition.East)
+            self.west: SiPHPositionerCommandGroup = make(ProbePosition.West)
+
+
+    def __init__(self, prober : 'SentioProber') -> None: # type: ignore
+        super().__init__(prober, "siph")
+
+        # Per positioner command groups; the remote commands behind them exist since SENTIO 25.2
+        if Compatibility.level >= CompatibilityLevel.Sentio_25_2:
+            self.top = self._TopPositioners(prober)
+            self.bottom = self._BottomPositioners(prober)
+
+            # Top positioners are also available without the "top" part, as in the remote command
+            self.east = self.top.east
+            self.west = self.top.west
+            self.north = self.top.north
+            self.south = self.top.south
+            self.northeast = self.top.northeast
+            self.northwest = self.top.northwest
+            self.southeast = self.top.southeast
+            self.southwest = self.top.southwest
 
 
     def fast_alignment(self) -> None:
         """Perform fast fiber alignment."""
         self.comm.send("siph:fast_alignment")
         Response.check_resp(self.comm.read_line())
-
-
-    def get_cap_sensor(self) -> Tuple[float, float]:
-        """Get the capacitance sensor value.
-
-        Returns:
-            A tuple with the values from the capacity sensors of probe 1 and probe 2.
-        """
-        self.comm.send("siph:get_cap_sensor")
-        resp = Response.check_resp(self.comm.read_line())
-        tok = resp.message().split(",")
-        return float(tok[0]), float(tok[1])
-
-    def get_fiber_length(self, stage: Stage, probe: ProbePosition) -> float:
-        """Retrieves the fiber length of an SiPH positioner.
-
-        Args:
-            stage: The probe stage (TopProbe/BottomProbe).
-            probe: The probe position.
-
-        Returns:
-            The fiber length in micrometer.
-        """
-        if stage == Stage.TopProbe:
-            pos = 'top'
-        elif stage == Stage.BottomProbe:
-            pos = 'bottom'
-        else:
-            raise ValueError("Stage must be a probe stage")
-
-        self.comm.send(f"siph:{pos}:{probe.to_string().lower()}:get_fiber_length")
-        resp = Response.check_resp(self.comm.read_line())
-        return float(resp.message())
 
 
     def get_intensity(self, channel : int = 1) -> float:
@@ -103,74 +138,10 @@ class SiPHCommandGroup(CommandGroupBase):
         Response.check_resp(self.comm.read_line())
 
 
-    def coupling(self, probe: ProbePosition, axis: UvwAxis) -> None:
-        """Start execute coupling.
-
-        Args:
-            probe: Execute probe.
-            axis: Execute axis
-        """
-
-        self.comm.send(f"siph:coupling {probe.to_string()},{axis.to_string()}")
-        Response.check_resp(self.comm.read_line())
-
-
-    def get_alignment(self, probe: ProbePosition, fiber_type: FiberType) -> Tuple[bool, bool, bool, bool]:
-        """Get the fast alignment function enable including Coarse, Fine, Gradient, and Rotary/Focal searching.
-
-        Args:
-            probe: The probe to get the alignment settings for.
-            fiber_type: The type of fiber used (Single, Array, or Lensed).
-
-        Returns:
-            A tuple containing the status of Coarse, Fine, Gradient, and Rotary/Focal searching (True/False).
-        """
-        self.comm.send(f"siph:get_alignment {probe.to_string()},{fiber_type.to_string()}")
-        resp = Response.check_resp(self.comm.read_line())
-
-        tok = resp.message().split(",")
-        coarse = tok[0].strip().lower() == "true"
-        fine = tok[1].strip().lower() == "true"
-        gradient = tok[2].strip().lower() == "true"
-        rotary_focal = tok[3].strip().lower() == "true"
-
-        return coarse, fine, gradient, rotary_focal
-
-
-    def set_origin(self, probe: ProbePosition) -> None:
-        """Set the current position as the origin position for the SiPH positioner.
-
-        Args:
-            probe: The probe to set the origin position for (East or West).
-
-        Returns:
-            A Response object containing the command execution status.
-        """
-
-        self.comm.send(f"siph:set_origin {probe.to_string()}")
-        Response.check_resp(self.comm.read_line())
-
-
-    def move_origin(self, probe: ProbePosition) -> None:
-        """Move SiPH positioner to its origin position.
-
-        The movement includes:
-        - NanoCube XY moves back to 50 μm.
-        - UVW axes move back to the position set during Hover Height training.
-        - If the axis is in "Manual" mode, only NanoCube moves to 50 μm.
-
-        Args:
-            probe: The probe to move to origin position (East or West).
-
-        Returns:
-            A Response object containing the command execution status.
-        """
-        self.comm.send(f"siph:move_origin {probe.to_string()}")
-        Response.check_resp(self.comm.read_line())
-
-
     def move_position_uvw(self, probe: ProbePosition, axis: UvwAxis, degree: float) -> float:
         """Move the SiPH positioner target axis with a relative degree.
+
+        !!! danger "Deprecated since Sentio 25.2<br/>            This function is obsolete and will be removed in a future release. It only addresses top positioners.             Use [`probe.[top|bottom].{east|west|north|south|northeast|northwest|southeast|southwest}.move_uvw()`](StageCommandGroup.md#sentio_prober_control.Sentio.CommandGroups.StageCommandGroup.StageCommandGroup.move_uvw) instead."
 
         Args:
             probe: The positioner ID to move (East or West).
@@ -184,63 +155,6 @@ class SiPHCommandGroup(CommandGroupBase):
         resp = Response.check_resp(self.comm.read_line())
 
         return float(resp.message())
-
-
-    def pivot_point(self, probe: ProbePosition) -> None:
-        """Run pivot point calibration for the specified positioner.
-
-        Args:
-            probe: The positioner ID to calibrate (East or West).
-
-        Returns:
-            A Response object containing the command execution status.
-        """
-        self.comm.send(f"siph:pivot_point {probe.to_string()}")
-        Response.check_resp(self.comm.read_line())
-
-
-    def set_alignment(self, probe: ProbePosition, fiber_type: FiberType, coarse: bool, fine: bool, gradient: bool,
-                      rotary: bool) -> None:
-        """Set the fast alignment function enable including Coarse, Fine, Gradient, and Rotary/Focal searching.
-
-        Args:
-            probe: The positioner ID to calibrate (East or West).
-            fiber_type: The fiber type ("Single", "Array", "Lensed").
-            coarse: Enable or disable coarse search (True = ON, False = OFF).
-            fine: Enable or disable fine search (True = ON, False = OFF).
-            gradient: Enable or disable gradient search (True = ON, False = OFF).
-            rotary: Enable or disable rotary/focal search (True = ON, False = OFF, not supported for "Single" fiber type).
-
-        Returns:
-            A Response object containing the command execution status.
-        """
-        coarse_str = "ON" if coarse else "OFF"
-        fine_str = "ON" if fine else "OFF"
-        gradient_str = "ON" if gradient else "OFF"
-        rotary_str = "ON" if rotary else "OFF"
-
-        self.comm.send(f"siph:set_alignment {probe.to_string()},{fiber_type},{coarse_str},{fine_str},{gradient_str},{rotary_str}")
-        Response.check_resp(self.comm.read_line())
-
-    def set_hover(self, stage: Stage, probe: ProbePosition, gap: float) -> None:
-        """Sets the hover gap of an SiPH positioner.
-
-        Args:
-            stage: The probe stage (TopProbe/BottomProbe).
-            probe: The probe position.
-
-        Returns:
-            A Response object containing the command execution status.
-        """
-        if stage == Stage.TopProbe:
-            pos = 'top'
-        elif stage == Stage.BottomProbe:
-            pos = 'bottom'
-        else:
-            raise ValueError("Stage must be a probe stage")
-
-        self.comm.send(f"siph:{pos}:{probe.to_string().lower()}:set_hover {gap}")
-        Response.check_resp(self.comm.read_line())
 
 
     def set_pivot_point(self, rotary_angle_1: float, rotary_angle_2: float, leveling_angle: float, repeats: int) -> None:
@@ -292,64 +206,3 @@ class SiPHCommandGroup(CommandGroupBase):
         return command_id
 
 
-    def move_nanocube_xy(self, probe: ProbePosition, x: float, y: float) -> tuple[float, float]:
-        """Move NanoCube to the target XY position.
-
-        The movement range is limited to 0 ~ 100 μm.
-
-        Args:
-            probe: The positioner (East or West).
-            x: Target X position (μm), must be in range [0, 100].
-            y: Target Y position (μm), must be in range [0, 100].
-
-        Returns:
-            A tuple containing the new X and Y positions after movement.
-        """
-        if not (0 <= x <= 100 and 0 <= y <= 100):
-            raise ValueError("X and Y values must be between 0 and 100 μm.")
-
-        self.comm.send(f"move_nanocube_xy {probe.to_string()},{x},{y}")
-        resp = Response.check_resp(self.comm.read_line())
-
-        # Parse response message
-        tok = resp.message().split(",")
-        new_x = float(tok[0])
-        new_y = float(tok[1])
-        return new_x, new_y
-
-
-    def get_nanocube_xy(self, probe: ProbePosition) -> tuple[float, float]:
-        """Get the current NanoCube XY position.
-
-        Args:
-            probe: The positioner (East or West).
-
-        Returns:
-            A tuple containing the current X and Y positions.
-        """
-        self.comm.send(f"get_nanocube_xy {probe.to_string()}")
-        resp = Response.check_resp(self.comm.read_line())
-
-        # Parse response message
-        tok = resp.message().split(",")
-        current_x = float(tok[0])
-        current_y = float(tok[1])
-        return current_x, current_y
-
-
-    def get_nanocube_z(self, probe: ProbePosition) -> float:
-        """Get the current NanoCube Z position.
-
-        Args:
-            probe: The positioner (East or West).
-
-        Returns:
-            The current Z position.
-        """
-        self.comm.send(f"get_nanocube_z {probe.to_string()}")
-        resp = Response.check_resp(self.comm.read_line())
-
-        # Parse response message
-        tok = resp.message().split(",")
-        current_z = float(tok[0])
-        return current_z

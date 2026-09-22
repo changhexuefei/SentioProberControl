@@ -781,20 +781,23 @@ class FiberType(Enum):
     """An enumeration containing supported fiber type.
 
     Attributes:
-        Single (0)
-        Array (1)
-        Lensed (2)
+        Single (0): Single fiber.
+        Array (1): Fiber array.
+        Lensed (2): Lensed fiber.
+        LensedArray (3): Lensed fiber array.
     """
 
     Single = 0
     Array = 1
     Lensed = 2
+    LensedArray = 3
 
     def to_string(self):
         switcher = {
             FiberType.Single: "Single",
             FiberType.Array: "Array",
             FiberType.Lensed: "Lensed",
+            FiberType.LensedArray: "LensedArray",
         }
         return switcher.get(self, "Invalid fiber type enumerator")
 
@@ -1072,6 +1075,25 @@ class PoiReferenceXy(Enum):
         return switcher.get(self, "Invalid stage")
 
 
+class PowerMeterUnit(Enum):
+    """Unit of a SiPH power meter reading.
+
+    Attributes:
+        mWatt (0): Milliwatt.
+        dBm (1): Decibel-milliwatts.
+    """
+
+    mWatt = 0
+    dBm = 1
+
+    def to_string(self):
+        switcher = {
+            PowerMeterUnit.mWatt: "mWatt",
+            PowerMeterUnit.dBm: "dBm",
+        }
+        return switcher.get(self, "Invalid power meter unit enumerator")
+
+
 class ProjectFileInfo(Enum):
     """An enumerator containing the different aspects of retrieving current project info.
 
@@ -1198,6 +1220,21 @@ class Stage(Enum):
             Stage.AuxiliaryScope: "auxscope",
         }
         return switcher.get(self, "Invalid stage")
+
+    def to_probe_selector(self) -> str:
+        """Return the selector used to address probes of this stage in remote commands.
+
+        The probe and SiPH remote commands address positioners with a
+        "{selector}:{position}" prefix, e.g. "siph:top:east:get_cap_sensor".
+
+        Raises:
+            ValueError: If the stage is not a probe stage.
+        """
+        if self == Stage.TopProbe:
+            return "top"
+        if self == Stage.BottomProbe:
+            return "bottom"
+        raise ValueError("Stage must be a probe stage")
 
 
 class SteppingContactMode(Enum):

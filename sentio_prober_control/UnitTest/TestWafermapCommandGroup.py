@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.Enumerations import AxisOrient, ColorScheme, DieNumber, RoutingStartPoint, \
     RoutingPriority, OrientationMarker
@@ -9,7 +10,7 @@ from sentio_prober_control.Sentio.Enumerations import AxisOrient, ColorScheme, D
 class TestWafermapCommandGroup(unittest.TestCase):
     def setUp(self):
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
-        self.prober = SentioProber(self.mock_comm)
+        self.prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_bin_step_next_die(self):
         self.mock_comm.read_line.return_value = "0,0,10,20,0"

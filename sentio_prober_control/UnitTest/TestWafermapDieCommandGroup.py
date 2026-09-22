@@ -2,13 +2,14 @@ import unittest
 from unittest.mock import MagicMock
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 
 
 class TestWafermapDieCommandGroup(unittest.TestCase):
     def setUp(self):
         """Mock the communicator and initialize the test prober."""
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
-        self.test_prober = SentioProber(self.mock_comm)
+        self.test_prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_add_die(self):
         """Test adding a die"""

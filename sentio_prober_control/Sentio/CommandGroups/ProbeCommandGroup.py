@@ -314,14 +314,7 @@ class ProbeCommandGroup(CommandGroupBase):
         Returns:
             The z position after the move in micrometer (from zero).
         """
-        if stage == Stage.TopProbe:
-            pos = 'top'
-        elif stage == Stage.BottomProbe:
-            pos = 'bottom'
-        else:
-            raise ValueError("Stage must be a probe stage")
-
-        self.comm.send(f"probe:{pos}:{probe.to_string().lower()}:move_lift")
+        self.comm.send(f"probe:{stage.to_probe_selector()}:{probe.to_string().lower()}:move_lift")
         resp = Response.check_resp(self.comm.read_line())
         return float(resp.message())
 

@@ -1,5 +1,143 @@
 Changes:
 
+Version 26.2.0
+=============
+BREAKING CHANGE: SiPH positioner commands follow the remote command structure
+	The SiPH commands that address a single positioner are now available as
+		prober.siph.[top|bottom].{east|west|north|south|northeast|northwest|southeast|southwest}.<command>()
+	mirroring the SENTIO remote commands "siph:{top|bottom}:{position}:<command>" (SENTIO 25.2 and newer).
+	As in the remote command the "top" part is optional: prober.siph.east is the same as prober.siph.top.east.
+	Bottom positioners exist for east and west only. The sub groups are not created for SENTIO older than 25.2.
+
+	The old functions are not kept as deprecated aliases. If you need to keep running existing scripts
+	unchanged, stay on the previous release of this package: pip install sentio-prober-control==25.2.1
+
+	The old flat functions were removed. Migration:
+		prober.siph.get_cap_sensor()                   -> prober.siph.[top.]east.get_cap_sensor() / .west.get_cap_sensor()
+		prober.siph.get_fiber_length(stage, probe)     -> prober.siph.[top|bottom].{probe}.get_fiber_length()
+		prober.siph.set_hover(stage, probe, gap)       -> prober.siph.[top|bottom].{probe}.set_hover(gap)
+		prober.siph.coupling(probe, axis)              -> prober.siph.{probe}.coupling(axis)
+		prober.siph.get_alignment(probe, fiber_type)   -> prober.siph.{probe}.get_alignment(fiber_type)
+		prober.siph.set_alignment(probe, fiber_type, coarse, fine, gradient, rotary)
+		                                               -> prober.siph.{probe}.set_alignment(fiber_type, coarse, fine, gradient, rotary_gradient, focal_gradient)
+		prober.siph.set_origin(probe)                  -> prober.siph.{probe}.set_origin()
+		prober.siph.move_origin(probe)                 -> prober.siph.{probe}.move_origin()
+		prober.siph.pivot_point(probe)                 -> prober.siph.{probe}.pivot_point()
+		prober.siph.move_nanocube_xy(probe, x, y)      -> prober.siph.{probe}.move_nanocube_xy(x, y)
+		prober.siph.get_nanocube_xy(probe)             -> prober.siph.{probe}.get_nanocube_xy()
+		prober.siph.get_nanocube_z(probe)              -> prober.siph.{probe}.get_nanocube_z()
+
+	Newly wrapped positioner commands: enable_distance_sensor, fiber_power_reading, fine_alignment,
+	move_nanocube_z, set_pivot_point (per positioner).
+
+	get_alignment returns one flag per search type of the fiber type (3 to 5 values) instead of always four.
+	set_alignment sends only the flags given; rotary_gradient and focal_gradient are optional and depend on the fiber type.
+
+Bugfixes:
+	+ fix for #53 (get_cap_sensor command not working with SENTIO V26)
+		- Since SENTIO 25.2 "siph:get_cap_sensor" returns a single value for one positioner. Use
+		  prober.siph.[top|bottom].{position}.get_cap_sensor() which wraps "siph:{stage}:{position}:get_cap_sensor".
+	+ SentioProber(comm, compat_level=...) ignored an explicitly passed compatibility level and always
+	  raised "Compatibility level could not be determined".
+
+New functions:
+	+ prober.list_project_files() (requires SENTIO 26.2)
+	+ prober.aux.cleaning.reset_touch_count(chuck_site)
+	+ prober.siph.[top|bottom].{position}.* (see above)
+	+ prober.siph.get_prop(...) / set_prop(...) for the SiPH module properties (siph:get_prop / siph:set_prop)
+	+ prober.probe.[top|bottom].{position}.move_uvw(axis, value) and .get_uvw(axis) wrapping the remote commands
+	  "probe:{top|bottom}:{position}:move_uvw" / "get_uvw" (SENTIO 25.2 and newer). Unlike siph.move_position_uvw
+	  they also address bottom positioners.
+
+New enumerations:
+	+ PowerMeterUnit (mWatt, dBm)
+	+ FiberType.LensedArray
+
+Modifications:
+	+ prober.vision.align_wafer has a new optional timeout parameter (SENTIO #22611)
+	+ prober.siph.move_position_uvw is marked deprecated; use prober.probe.[top|bottom].{position}.move_uvw instead.
+	+ new compatibility level CompatibilityLevel.Sentio_26_2 (SENTIO 26.2 and newer)
+	+ StageCommandGroup.set_home: site can now be passed without x and y; argument formatting fixed
+	+ new enum method Stage.to_probe_selector() returning "top" / "bottom".
+	+ documentation: new page SiPHPositionerCommandGroup.md, SiPH navigation split into two pages.
+	+ unit tests: all tests pass an explicit compatibility level; new test files TestCompatibility,
+	  TestEnumerations and TestSiPHPositionerCommandGroup.
+
+Version 25.2.1
+=============
+Service release.
+
+Bugfixes:
+	+ fix for #49 (VisionCompensationGroup.start_execute always expected three parameters; moveToOffset
+	  parameter was missing). Signature is now start_execute(compensation_type, mode=None, moveToOffset=None).
+	+ SENTIO 26.x was not recognized by the compatibility level detection; the stage command groups
+	  (prober.chuck, prober.scope, prober.probe.top/bottom) were therefore unavailable with SENTIO 26.
+
+New functions:
+	+ prober.probe.get_probe_status(...)
+	+ prober.probe.enable_probe_motor(...)
+
+Modifications:
+	+ hard deprecation warnings ("deprecated" package) removed and replaced by documentation hints.
+	+ typed overloads for get_prop in the module command groups.
+	+ documentation updated (#47 ZReference compensated contact, #48 move_xy XyReference usage).
+
+
+Version 25.2.0
+=============
+Major API consolidation release. The Python API was made consistent with the SENTIO remote command API.
+See https://github.com/SentioProberDev/SentioProberControl/releases/tag/v25.2.0 for the full list of
+pull requests. This release contains breaking changes (see issue #46):
+	+ Function names and parameter order now follow the underlying remote command.
+	+ String parameters that represent a fixed set of values were replaced by enums.
+	+ Functions no longer return Response objects; failures are signalled by exceptions.
+
+New features:
+	+ compatibility levels (CompatibilityLevel.Sentio_24_0 / Sentio_25_1 / Sentio_25_2). SentioProber queries
+	  the SENTIO version on construction; commands not supported by the connected SENTIO raise a RuntimeError
+	  with a clear message instead of failing with a cryptic remote command error (#42).
+	+ generic stage command groups mirroring the SENTIO 25.2 remote command structure (SENTIO >= 25.2):
+		- prober.chuck.*, prober.scope.*
+		- prober.probe.top.{east|west|north|south|northeast|northwest|southeast|southwest}.*
+		- prober.probe.bottom.{east|west|...}.*
+		- prober.probe.{east|west|...}.* as shortcut for the top probes
+	+ new command groups: prober.setup (incl. setup.contact_counter, setup.remote), prober.vision.pattern,
+	  prober.map.view
+	+ SiPH command group completed (fast_alignment, get_cap_sensor, get_fiber_length, get_intensity,
+	  gradient_search, move_hover, move_separation, move_position_uvw, pivot_point, set_hover, set_pivot_point,
+	  coupling, start_tracking, download_graph_data, nanocube commands, ...)
+	+ probe command group completed (async_step_probe_site*, get_probe_site*, get_probe_xy/z,
+	  move_probe_contact/home/lift/separation/xy/z, set_probe_contact/home, step_probe_site*, ...)
+	+ many missing remote commands wrapped in the aux, loader, status, qalibria, vision, vision.camera,
+	  wafermap (bins, die, path, poi, subsite, compensation) command groups and on SentioProber itself
+	  (e.g. chuck/scope/vce movement, project handling, door lock, signal tower, indexer, wafer id, ...)
+	+ SentioProber.get_wafer_diameter, SentioProber.move_chuck_lift
+	+ communicators accept an encoding parameter (default: locale preferred encoding)
+	+ unit tests for all command groups added (sentio_prober_control/UnitTest)
+
+Bugfixes:
+	+ fix for #17 (status:set_chuck_temp is missing the new optional parameter)
+	+ fix for #34 (nanocube remote commands do not have a siph prefix)
+	+ fix for #38 (ZReference bug when communicating with SENTIO 24.x)
+	+ fix for #42 (get_probe_site not working)
+	+ missing DriftType added; missing remote command error code added
+	+ set_chuck_site_height return values changed to mimic the remote command response
+	+ map:get_orient_marker returns an enum
+
+Modifications / breaking changes:
+	+ enums renamed or replaced:
+		- ChuckXYReference, ScopeXYReference, ProbeXYReference -> XyReference
+		- ChuckZReference, ScopeZReference, ProbeZReference, VceZReference -> ZReference
+		- ChuckThetaReference -> ThetaReference
+		- ProbeSentio -> ProbePosition
+	+ new enums: AccessLevel, ChuckSpeed, ChuckThermoEnergyMode, ChuckThermoHoldMode, DevicePosition,
+	  DriftType, ElementType, FiberType, HighPowerAirState, MoveAxis, PathSelection, SoftContactState,
+	  SubsiteGroup, SwapBridgeSide, UserCoordState, UvwAxis, VacuumState, WaferIdSide, XyCompensationType,
+	  ZCompensationType
+	+ removed: vision.create_probepad_model, vision.detect_probepads
+	+ aux and qalibria command group API simplified
+	+ member functions sorted alphabetically (needed for the generated documentation)
+
 Version 24.4.0
 =============
 Bugfixes:

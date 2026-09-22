@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 from sentio_prober_control.Sentio.Response import Response
 
 class TestScopeCommandGroup(unittest.TestCase):
@@ -10,7 +11,7 @@ class TestScopeCommandGroup(unittest.TestCase):
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
 
         # Ensure the mock provides `send` and `read_line` methods
-        self.test_prober = SentioProber(self.mock_comm)
+        self.test_prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_get_scope_home(self):
         """Test get_scope_home method."""

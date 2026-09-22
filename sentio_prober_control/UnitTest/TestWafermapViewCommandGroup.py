@@ -2,12 +2,13 @@ import unittest
 from unittest.mock import MagicMock
 from sentio_prober_control.Communication.CommunicatorTcpIp import CommunicatorTcpIp
 from sentio_prober_control.Sentio.ProberSentio import SentioProber
+from sentio_prober_control.Sentio.Compatibility import CompatibilityLevel
 
 
 class TestWafermapViewCommandGroup(unittest.TestCase):
     def setUp(self):
         self.mock_comm = MagicMock(spec=CommunicatorTcpIp)
-        self.prober = SentioProber(self.mock_comm)
+        self.prober = SentioProber(self.mock_comm, CompatibilityLevel.Sentio_26_2)
 
     def test_show_current_die(self):
         """Test map:view:show_current_die command"""

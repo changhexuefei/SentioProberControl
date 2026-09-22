@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from sentio_prober_control.Sentio.Enumerations import XyReference, ZReference, Stage, ChuckSite
+from sentio_prober_control.Sentio.Enumerations import XyReference, ZReference, Stage, ChuckSite, UvwAxis
 from sentio_prober_control.Sentio.Response import Response
 from sentio_prober_control.Sentio.CommandGroups.CommandGroupBase import CommandGroupBase
 
@@ -70,6 +70,23 @@ class StageCommandGroup(CommandGroupBase):
         return int(resp.message())
 
 
+    def get_uvw(self, axis: UvwAxis) -> float:
+        """Get the position of a UVW axis of a SiPH positioner.
+
+        Wraps the remote command `probe:{top|bottom}:{position}:get_uvw`. Only
+        available for probes with UVW axes.
+
+        Args:
+            axis: The UVW axis to query.
+
+        Returns:
+            The position of the axis in degree.
+        """
+        self.comm.send(f"{self.__stage_selector}:get_uvw {axis.to_string()}")
+        resp = Response.check_resp(self.comm.read_line())
+        return float(resp.message())
+
+
     def get_xy(self, ref_xy : XyReference) -> Tuple[float, float, XyReference]:
         """ Returns the stage position for a given reference.
 
@@ -136,6 +153,24 @@ class StageCommandGroup(CommandGroupBase):
         """
         self.comm.send(f"{self.__stage_selector}:lift {lift}")
         Response.check_resp(self.comm.read_line())
+
+
+    def move_uvw(self, axis: UvwAxis, value: float) -> float:
+        """Move a UVW axis of a SiPH positioner to a position.
+
+        Wraps the remote command `probe:{top|bottom}:{position}:move_uvw`. Only
+        available for probes with UVW axes.
+
+        Args:
+            axis: The UVW axis to move.
+            value: The target position of the axis in degree.
+
+        Returns:
+            The position of the axis after the move in degree.
+        """
+        self.comm.send(f"{self.__stage_selector}:move_uvw {axis.to_string()},{value}")
+        resp = Response.check_resp(self.comm.read_line())
+        return float(resp.message())
 
 
     def move_xy(self, ref: XyReference, x: float, y: float) -> Tuple[float, float, XyReference]:
